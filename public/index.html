@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Passkey Demo</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            margin: 5px;
+            width: 250px;
+        }
+
+        button {
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Passkey Explorer</h1>
+    <input id="email" type="email" placeholder="Enter your email">
+    <button onclick="register()">1. Create Passkey</button>
+    <button onclick="login()">2. Login with Passkey</button>
+
+    <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+    <script>
+        const { startRegistration, startAuthentication } = SimpleWebAuthnBrowser;
+
+        async function register() {
+            const username = document.getElementById('email').value;
+            if (!username) return alert("Enter email");
+
+            try {
+                const options = await fetch('/register/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                }).then(r => r.json());
+
+                // Trigger the Biometric Prompt
+                const credential = await startRegistration({ optionsJSON: options });
+
+                const result = await fetch('/register/finish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, credential })
+                }).then(r => r.json());
+
+                if (result.success) alert("Passkey registered successfully!");
+            } catch (err) {
+                console.error(err);
+                alert("Registration failed: " + err.message);
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('email').value;
+            if (!username) return alert("Enter email");
+
+            try {
+                const options = await fetch('/login/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                }).then(r => r.json());
+
+                const assertion = await startAuthentication({ optionsJSON: options });
+
+                const result = await fetch('/login/finish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, credential: assertion })
+                }).then(r => r.json());
+
+                if (result.success) alert("Logged in successfully!");
+                else alert("Login failed");
+            } catch (err) {
+                console.error(err);
+                alert("Login failed: " + err.message);
+            }
+        }
+    </script>
+</body>
+
+</html>
